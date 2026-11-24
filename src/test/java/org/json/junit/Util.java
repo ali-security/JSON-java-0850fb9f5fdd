@@ -117,4 +117,34 @@ public class Util {
             );
         }
     }
+
+    /**
+     * Runs the given task on a new thread with a large stack and returns
+     * whatever it threw. Tests that drive a parser to a deep nesting level
+     * use this, so the test suite itself may be run with a small stack
+     * (for example -Xss512k).
+     * @param task the work to run on the large-stack thread
+     * @return the throwable raised by the task, or null if it completed normally
+     */
+    public static Throwable throwableFromLargeStack(final Runnable task) {
+        final Throwable[] thrown = new Throwable[1];
+        Thread worker = new Thread(null, new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    task.run();
+                } catch (Throwable t) {
+                    thrown[0] = t;
+                }
+            }
+        }, "large-stack-test", 8L * 1024 * 1024);
+        worker.start();
+        try {
+            worker.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            fail("Interrupted while waiting for the large-stack test thread");
+        }
+        return thrown[0];
+    }
 }
